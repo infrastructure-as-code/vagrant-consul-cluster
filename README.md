@@ -123,6 +123,7 @@ Each production environment is slightly different since needs vary widely.  This
 1. [gliderlabs/registrator][a06]
 1. [Sreenivas Makam's Blog: Service Discovery with Consul][a07]
 1. [tomkins/cloud-init-vagrant][a15]
+1. [AWS Quick Starts: HashiCorp Consul on AWS][a16]
 
 [a01]: https://www.consul.io/
 [a02]: http://www.wickedawesometech.us/2016/04/setting-up-consul-service-discovery-in.html
@@ -139,3 +140,4 @@ Each production environment is slightly different since needs vary widely.  This
 [a13]: https://www.vagrantup.com/
 [a14]: https://www.virtualbox.org/
 [a15]: https://github.com/tomkins/cloud-init-vagrant
+[a16]: https://aws.amazon.com/quickstart/architecture/consul/
