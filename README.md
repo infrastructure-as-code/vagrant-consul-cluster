@@ -66,7 +66,7 @@ docker run \
   infrastructureascode/hello-world
 
 # Look up its Consul DNS name with the SRV record
-dig @0.0.0.0 -p 8600 -t SRV hello-world.service.dc1.consul
+dig SRV hello-world.service.dc1.consul
 
 # Log on to the compute-02 node
 vagrant ssh compute-02
@@ -84,7 +84,7 @@ docker run \
 
 # Look up its Consul DNS again and see the SRV record resolve to two instances,
 # with one instance on each compute node.
-dig @0.0.0.0 -p 8600 -t SRV hello-world.service.dc1.consul
+dig SRV hello-world.service.dc1.consul
 ```
 
 ### Simulating Consul Outages

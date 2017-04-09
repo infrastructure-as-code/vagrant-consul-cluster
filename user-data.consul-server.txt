@@ -116,6 +116,7 @@ cloud_final_modules:
  - power-state-change
 
 packages:
+- dnsmasq
 - uuid
 - wget
 - zip
@@ -192,6 +193,12 @@ write_files:
 
     [Install]
     WantedBy=multi-user.target
+
+- path: "/etc/dnsmasq.d/consul"
+  owner: "root:root"
+  permissions: "0644"
+  content: |
+    server=/consul/127.0.0.1#8600
 
 runcmd:
 - /opt/install-consul.sh
