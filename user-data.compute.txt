@@ -1,0 +1,234 @@
+#cloud-config
+
+apt_update: true
+apt_upgrade: true
+apt_reboot_if_required: true
+
+manage_etc_hosts: localhost
+
+ssh_authorized_keys:
+- ssh-rsa AAAAB3NzaC1yc2EAAAABIwAAAQEA6NF8iallvQVp22WDkTkyrtvp9eWW6A8YVr+kz4TjGYe7gHzIw+niNltGEFHzD8+v1I2YJ6oXevct1YeS0o9HZyN1Q9qgCgzUFtdOKLv6IedplqoPkcmF0aYet2PkEDo3MlTBckFXPITAMzF8dJSIFo9D8HfdOV0IAdx4O7PtixWKn5y2hMNG0zQPyUecp4pzC6kivAIhyfHilFR61RGL+GPXQ2MWZWFYbAGjyiYJnAmCP3NOTd0jMZEnDkbUvxhMmBYSdETk1rRgm+R4LOzFUGaHqHDLKLX+FIPKcF96hrucXzcWyLbIbEgE98OHlnVYCzRdK8jlqm8tehUc9c9WhQ== vagrant insecure public key
+
+bootcmd:
+- "ln -snf /run/resolvconf/resolv.conf /etc/resolv.conf"
+
+groups:
+- "sudo"
+- "users"
+
+users:
+# The ubuntu/xenial64 Vagrant box uses the "ubuntu" user that seems to be
+# created by a Cloud Config file which gets overwritten by this file, so
+# creating the ubuntu user with the same settings as best as I can.
+- name: "ubuntu"
+  gecos: "Ubuntu"
+  shell: "/bin/bash"
+  primary-group: "ubuntu"
+  groups:
+  - adm
+  - dialout
+  - cdrom
+  - floppy
+  - sudo
+  - audio
+  - dip
+  - video
+  - plugdev
+  - netdev
+  - lxd
+  - docker
+  sudo:
+  - "ALL=(ALL) NOPASSWD:ALL"
+  ssh_authorized_keys:
+  - "ssh-rsa AAAAB3NzaC1yc2EAAAABIwAAAQEA6NF8iallvQVp22WDkTkyrtvp9eWW6A8YVr+kz4TjGYe7gHzIw+niNltGEFHzD8+v1I2YJ6oXevct1YeS0o9HZyN1Q9qgCgzUFtdOKLv6IedplqoPkcmF0aYet2PkEDo3MlTBckFXPITAMzF8dJSIFo9D8HfdOV0IAdx4O7PtixWKn5y2hMNG0zQPyUecp4pzC6kivAIhyfHilFR61RGL+GPXQ2MWZWFYbAGjyiYJnAmCP3NOTd0jMZEnDkbUvxhMmBYSdETk1rRgm+R4LOzFUGaHqHDLKLX+FIPKcF96hrucXzcWyLbIbEgE98OHlnVYCzRdK8jlqm8tehUc9c9WhQ== vagrant insecure public key"
+
+- name: "vtse"
+  gecos: "foobar"
+  primary-group: "users"
+  groups:
+  - sudo
+  shell: "/bin/bash"
+  sudo:
+  - "ALL=(ALL) NOPASSWD:ALL"
+  ssh-import-id: "gh:vincetse"
+
+apt_sources:
+  # ssh-import-id. get v5.6 cos v5.5 that comes with Xenial has a bug
+  # that only gets one ssh key from github.
+  - source: "ppa:ssh-import-id/ppa"
+    filename: "ssh_import_id.list"
+
+  # https://www.digitalocean.com/community/tutorials/how-to-install-and-use-docker-on-ubuntu-16-04
+  #- source: "deb https://apt.dockerproject.org/repo ubuntu-xenial main"
+  #  filename: "docker.list"
+  #  keyid: "58118E89F3A912897C070ADBF76221572C52609D"
+
+  # https://docs.docker.com/engine/installation/linux/ubuntu/#install-using-the-repository
+  - source: "deb [arch=amd64] https://download.docker.com/linux/ubuntu xenial stable"
+    filename: "docker.list"
+    keyid: "0EBFCD88"
+
+# The modules that run in the 'init' stage
+cloud_init_modules:
+ - migrator
+ - ubuntu-init-switch
+ - seed_random
+ - bootcmd
+ - write-files
+ - growpart
+ - resizefs
+ - set_hostname
+ - update_hostname
+ - update_etc_hosts
+ - ca-certs
+ - rsyslog
+ - users-groups
+ - ssh
+
+# The modules that run in the 'config' stage
+cloud_config_modules:
+# Emit the cloud config ready event
+# this can be used by upstart jobs for 'start on cloud-config'.
+ - emit_upstart
+ - disk_setup
+ - mounts
+ - locale
+ - set-passwords
+ - snappy
+ - grub-dpkg
+ - apt-pipelining
+ - apt-configure
+ - package-update-upgrade-install
+ - ssh-import-id
+ - fan
+ - landscape
+ - timezone
+ - lxd
+ - puppet
+ - chef
+ - salt-minion
+ - mcollective
+ - disable-ec2-metadata
+ - runcmd
+ - byobu
+
+# The modules that run in the 'final' stage
+cloud_final_modules:
+ - rightscale_userdata
+ - scripts-vendor
+ - scripts-per-once
+ - scripts-per-boot
+ - scripts-per-instance
+ - scripts-user
+ - ssh-authkey-fingerprints
+ - keys-to-console
+ - phone-home
+ - final-message
+ - power-state-change
+
+packages:
+- docker-ce
+- uuid
+- wget
+- zip
+
+write_files:
+- path: "/opt/install-consul.sh"
+  owner: "root:root"
+  permissions: "0755"
+  content: |
+    #!/bin/bash -eux
+    VERSION="0.8.0"
+    FILE="consul_${VERSION}_linux_amd64.zip"
+    URL="https://releases.hashicorp.com/consul/${VERSION}/${FILE}"
+    WORKDIR="/tmp"
+    INSTALLDIR="/usr/local/bin"
+    DATADIR="/var/lib/consul"
+    cd "${WORKDIR}"
+    pwd
+    wget --quiet "${URL}" --output-document "${FILE}"
+    unzip "${FILE}"
+    rm "${FILE}"
+    chmod +x consul
+    mkdir --verbose --parents "${INSTALLDIR}" "${DATADIR}"
+    mv consul "${INSTALLDIR}"
+    cd -
+    pwd
+
+- path: "/lib/systemd/system/setup-network-environment.service"
+  owner: "root:root"
+  permissions: "0644"
+  content: |
+    [Unit]
+    Description=Setup Network Environment
+    Documentation=https://github.com/kelseyhightower/setup-network-environment
+    Requires=network-online.target
+    After=network-online.target
+
+    [Service]
+    ExecStartPre=-/bin/mkdir -p /usr/local/bin
+    ExecStartPre=/usr/bin/wget -N -P /usr/local/bin https://github.com/kelseyhightower/setup-network-environment/releases/download/v1.0.0/setup-network-environment
+    ExecStartPre=/bin/chmod +x /usr/local/bin/setup-network-environment
+    ExecStart=/usr/local/bin/setup-network-environment
+    RemainAfterExit=yes
+    Type=oneshot
+
+- path: "/lib/systemd/system/consul-client.service"
+  owner: "root:root"
+  permissions: "0644"
+  content: |
+    [Unit]
+    Description=Consul Client
+    After=network.target
+
+    [Service]
+    User=root
+    Group=root
+    EnvironmentFile=/etc/network-environment
+    ExecStart=/usr/local/bin/consul agent \
+      -data-dir=/var/lib/consul \
+      -advertise=${ENP0S8_IPV4} \
+      -retry-join=10.200.0.11 \
+      -retry-join=10.200.0.12 \
+      -retry-join=10.200.0.13 \
+      -retry-join=10.200.0.14 \
+      -retry-join=10.200.0.15
+    ExecReload=/bin/kill -9 $MAINPID
+    KillSignal=SIGINT
+    Restart=on-failure
+
+    [Install]
+    WantedBy=multi-user.target
+
+- path: "/lib/systemd/system/registrator.service"
+  owner: "root:root"
+  permissions: "0644"
+  content: |
+    [Unit]
+    Description=Registrator
+    After=network.target consul-client.service docker.service
+
+    [Service]
+    User=root
+    Group=root
+    ExecStartPre=-/usr/bin/docker kill registrator
+    ExecStartPre=-/usr/bin/docker rm registrator
+    ExecStart=/usr/bin/docker run --rm \
+      --name registrator \
+      --net=host \
+      --volume=/var/run/docker.sock:/tmp/docker.sock \
+      gliderlabs/registrator \
+        consul://localhost:8500
+    ExecStop=/usr/bin/docker stop registrator
+
+    [Install]
+    WantedBy=multi-user.target
+
+runcmd:
+- /opt/install-consul.sh
+- /bin/systemctl enable setup-network-environment.service
+- /bin/systemctl start setup-network-environment.service
+- /bin/systemctl enable consul-client.service
+- /bin/systemctl start consul-client.service
+- /bin/systemctl enable registrator.service
+- /bin/systemctl start registrator.service
